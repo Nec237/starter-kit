@@ -290,7 +290,7 @@ model Order {
   idempotencyKey  String?   @unique
 
   // Provider reference
-  provider         String // e.g. "bictorys"
+  provider         String // e.g. "moneroo"
   providerChargeId String? @unique
   paymentUrl       String? // checkout/redirect URL returned by provider
   paymentMethod    String? // WAVE | ORANGE_MONEY | FREE_MONEY (set on PAID by webhook)
@@ -320,7 +320,7 @@ model Withdrawal {
   destination Json // { method: "WAVE" | "ORANGE_MONEY" | ..., phone: "+221...", accountName?: "..." }
 
   // Provider reference
-  provider         String // e.g. "bictorys"
+  provider         String // e.g. "moneroo"
   providerPayoutId String? @unique
   failureReason    String?
 

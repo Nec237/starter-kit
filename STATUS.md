@@ -44,7 +44,7 @@ Google OAuth flow shipped under `frontend/src/app/api/auth/oauth/google/{start,c
 
 ### Phase 3 — Admin, Orders, Visibility (commits TBD)
 
-12 admin endpoints shipped under `/api/admin/*` (users list/detail, role/status mutations, orders, withdrawals + cancel, audit-log, outbox visibility, email-queue visibility, rate-limits visibility, /me probe). All admin mutations call `logAdminAction(prisma, {...})` → AdminAction row. `pnpm db:make-superadmin <email>` script lives at `frontend/scripts/make-superadmin.ts` with companion test. `POST /api/orders` ships with idempotency-key + Bictorys provider + in-memory CircuitBreaker (PAY-01).
+12 admin endpoints shipped under `/api/admin/*` (users list/detail, role/status mutations, orders, withdrawals + cancel, audit-log, outbox visibility, email-queue visibility, rate-limits visibility, /me probe). All admin mutations call `logAdminAction(prisma, {...})` → AdminAction row. `pnpm db:make-superadmin <email>` script lives at `frontend/scripts/make-superadmin.ts` with companion test. `POST /api/orders` ships with idempotency-key + Moneroo provider + in-memory CircuitBreaker (PAY-01).
 
 | Endpoint                              | Method | Status | Requirement |
 | ------------------------------------- | ------ | ------ | ----------- |
@@ -74,11 +74,11 @@ Multi-tenancy (Organizations) deferred per ROADMAP — Prisma models + middlewar
 
 ### Phase 5 — Webhooks and Vercel Cron (commits TBD)
 
-`POST /api/webhooks/bictorys` ships with raw-body HMAC verification (60s replay window) + `WebhookLog @@unique([externalId, eventType])` dedup inside Serializable transaction; side-effects emit through outbox via `enqueueOutbox(tx, event)`. 5 cron route handlers under `/api/cron/<name>/route.ts`, each gated by `Authorization: Bearer ${CRON_SECRET}` (verified by `verifyCronSecret(req)` at `frontend/src/lib/server/cron/auth.ts`). `frontend/vercel.json` declares all 5 schedules.
+`POST /api/webhooks/moneroo` ships with raw-body HMAC verification (60s replay window) + `WebhookLog @@unique([externalId, eventType])` dedup inside Serializable transaction; side-effects emit through outbox via `enqueueOutbox(tx, event)`. 5 cron route handlers under `/api/cron/<name>/route.ts`, each gated by `Authorization: Bearer ${CRON_SECRET}` (verified by `verifyCronSecret(req)` at `frontend/src/lib/server/cron/auth.ts`). `frontend/vercel.json` declares all 5 schedules.
 
 | Endpoint                              | Schedule    | Status | Requirement |
 | ------------------------------------- | ----------- | ------ | ----------- |
-| `/api/webhooks/bictorys`              | (provider)  | ✓      | WH-01-02    |
+| `/api/webhooks/moneroo`              | (provider)  | ✓      | WH-01-02    |
 | `/api/cron/outbox-drain`              | every 1 min | ✓      | CRON-01     |
 | `/api/cron/email-queue-drain`         | every 1 min | ✓      | CRON-02     |
 | `/api/cron/verification-cleanup`      | hourly      | ✓      | CRON-03     |
@@ -141,7 +141,7 @@ Audit trail of these waves lives in `.planning/archive/` (SIMPLIFY-AUDIT, POST-S
 
 ### What is no longer in scope
 
-- Docker / `docker-compose` — the kit is cloud-only by design; Neon free tier replaces local Postgres in 30 seconds.
+- Docker / `docker-compose` — the kit is self-hosted-first by design; self-hosted Supabase free tier replaces local Postgres in 30 seconds.
 - Vercel CLI as a prerequisite — deploys happen via `git push` → Vercel imports the repo via UI.
 - A `frontend/Dockerfile` — removed in the simplification waves.
 

@@ -3,18 +3,23 @@
   "$comment_2": "Field semantics: `owns` = files the feature owns and that get DELETED on prune. `surgical_edits` = files that get EDITED (not deleted) — typically dispatcher cases, schema relations, type unions. `prune_complexity` = 'safe' | 'with-care' | 'never' (signals the AI must read PRUNING.md carefully).",
   "$comment_3": "`prune_complexity: never` means the codebase cannot be removed without breaking core flows (e.g. signup verification needs email-resend). The feature is still LISTED here because it has env vars / surgical_edits a fork-author should be aware of, but the AI MUST refuse a code-prune request and offer the configure-off (env-empty) alternative instead.",
   "version": "1.2.0",
-  "starter": "izikit@v1.1",
+  "starter": "starter-kit@v1.1",
   "features": {
-    "payments-bictorys": {
-      "description": "Bictorys mobile-money payments (orders + charge + circuit breaker)",
+    "payments-moneroo": {
+      "description": "Moneroo mobile-money payments (orders + charge + circuit breaker)",
       "prune_complexity": "with-care",
       "owns": {
         "routes": ["api/orders", "api/pay-redirect"],
         "libs": ["payments/", "orders/"],
         "models": ["Order"],
-        "envVars": ["BICTORYS_API_KEY", "BICTORYS_API_URL", "COMMISSION_RATE_BP"]
+        "envVars": [
+          "MONEROO_SECRET_KEY",
+          "MONEROO_WEBHOOK_SECRET",
+          "MONEROO_API_URL",
+          "COMMISSION_RATE_BP"
+        ]
       },
-      "cross_dependencies": ["notifications", "email-resend", "webhooks-bictorys", "withdrawals"],
+      "cross_dependencies": ["notifications", "email-resend", "webhooks-moneroo", "withdrawals"],
       "surgical_edits": [
         {
           "file": "frontend/src/lib/server/outbox/dispatcher.ts",
@@ -51,11 +56,11 @@
           "WITHDRAWAL_COOLDOWN_HOURS",
           "WITHDRAWAL_REQUIRE_PIN",
           "WITHDRAWAL_BALANCE_CHECK",
-          "BICTORYS_PRIVATE_KEY",
-          "BICTORYS_MERCHANT_SECRET_CODE"
+          "MONEROO_SECRET_KEY",
+          "MONEROO_WEBHOOK_SECRET"
         ]
       },
-      "cross_dependencies": ["payments-bictorys", "notifications", "admin-backoffice"],
+      "cross_dependencies": ["payments-moneroo", "notifications", "admin-backoffice"],
       "surgical_edits": [
         {
           "file": "frontend/src/lib/server/notifications/templates.ts",
@@ -68,16 +73,16 @@
       "tripwires_to_update": []
     },
 
-    "webhooks-bictorys": {
-      "description": "Bictorys webhook receiver with HMAC + replay window + outbox dispatch",
+    "webhooks-moneroo": {
+      "description": "Moneroo webhook receiver with HMAC + replay window + outbox dispatch",
       "prune_complexity": "safe",
       "owns": {
-        "routes": ["api/webhooks/bictorys"],
+        "routes": ["api/webhooks/moneroo"],
         "libs": ["webhook/"],
         "models": ["WebhookLog"],
-        "envVars": ["BICTORYS_WEBHOOK_SECRET", "BICTORYS_WEBHOOK_REPLAY_WINDOW_MS"]
+        "envVars": ["MONEROO_SECRET_KEY", "MONEROO_WEBHOOK_SECRET", "MONEROO_API_URL"]
       },
-      "cross_dependencies": ["payments-bictorys"],
+      "cross_dependencies": ["payments-moneroo"],
       "surgical_edits": [],
       "cron_entries": ["webhook-log-purge"],
       "prisma_user_relations": [],

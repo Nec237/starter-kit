@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3000 --turbopack",
+    "dev": "next dev --port 3001 --turbopack",
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
@@ -24,6 +24,7 @@
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "@sentry/nextjs": "^10.52.0",
+    "@supabase/supabase-js": "^2.57.4",
     "@upstash/redis": "^1.34.3",
     "@vercel/otel": "^2.1.2",
     "arctic": "^3.7.0",

@@ -34,14 +34,14 @@ describe('README.md doc tripwire (DOC-02) — current-state assertions', () => {
     expect(content).toMatch(/pnpm dev/);
   });
 
-  it('points users at Neon for the Postgres database (no Docker)', () => {
+  it('points users at self-hosted Supabase for PostgreSQL', () => {
     const content = readFileSync(README_PATH, 'utf8');
-    expect(content).toMatch(/neon\.tech/i);
+    expect(content).toMatch(/self-hosted Supabase/i);
   });
 
-  it('contains zero Docker references (Docker support removed 2026-05-13)', () => {
+  it('documents the Docker deployment path', () => {
     const content = readFileSync(README_PATH, 'utf8');
-    expect(content).not.toMatch(/\bdocker\b/i);
+    expect(content).toMatch(/\bDocker\b/i);
   });
 
   it('points at frontend/src/app/api/ for route inventory', () => {

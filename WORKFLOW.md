@@ -4,13 +4,13 @@
 
 > **👤 Débutant** : ouvre le repo dans Claude Code, tape **`/setup-kit`**, puis décris ce que tu veux. C'est tout.
 
-L'objectif : **vibe coding**. Tu clones, tu plug une DB Neon, tu parles à Claude, tu shippes. Pas de méthodo à apprendre, pas de slash commands à mémoriser.
+L'objectif : **vibe coding**. Tu clones, tu plug une DB self-hosted Supabase, tu parles à Claude, tu shippes. Pas de méthodo à apprendre, pas de slash commands à mémoriser.
 
 ---
 
 ## Étape 1 — `/setup-kit`
 
-Un seul point d'entrée. La skill [.claude/skills/setup-kit/SKILL.md](.claude/skills/setup-kit/SKILL.md) audite ton environnement (Node, pnpm, gh CLI), te fait installer 2 plugins Claude Code (superpowers + context-mode — paste-ready), créer un Neon Postgres gratuit (la **seule** dépendance obligatoire — le kit est cloud-only, pas de Docker), génère les secrets, lance `pnpm install` + applique les migrations Prisma. Puis te demande d'ouvrir un second terminal pour `pnpm dev`.
+Un seul point d'entrée. La skill [.claude/skills/setup-kit/SKILL.md](.claude/skills/setup-kit/SKILL.md) audite l'environnement, installe les dépendances, génère les secrets applicatifs et applique les migrations Prisma. En production, la stack Docker Supabase dédiée fournit PostgreSQL et ses services associés.
 
 Sortie : `pnpm dev` boote vert, `pnpm smoke:auth` passe.
 
@@ -30,15 +30,15 @@ Claude code à partir de ta description. Les 40 routes API du starter (auth, pai
 
 ---
 
-## Étape 3 — Déploie sur Vercel
+## Étape 3 — Déploie sur Dokploy
 
 Quand `pnpm dev` te plaît :
 
-> *« Déploie mon app sur Vercel. »*
+> *« Déploie mon app sur Dokploy. »*
 
-Claude pousse sur GitHub, importe le repo dans Vercel via leur UI, te demande de coller chaque env var (jamais via terminal pour les secrets), vérifie que `DATABASE_URL` est sur `-pooler` Neon, vérifie les 5 crons dans `vercel.json`, et te donne l'URL de prod.
+Dokploy déploie l'image Docker privée, injecte les variables serveur, route ton domaine (`your-domain.com`) via Traefik et exécute les schedules définis pour les handlers cron. (Vercel reste une alternative — voir README.)
 
-**Variables non-négociables en prod** : `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`, `ENCRYPTION_KEY`, `CRON_SECRET`, `APP_URL`. Tout le reste (Resend, Cloudinary, Bictorys, Google OAuth, Sentry, Upstash) est optionnel et inerte quand absent.
+**Variables non-négociables en prod** : `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`, `ENCRYPTION_KEY`, `CRON_SECRET`, `APP_URL`. Tout le reste (Resend, Cloudinary, Moneroo, Google OAuth, Sentry, Upstash) est optionnel et inerte quand absent.
 
 ---
 
@@ -46,7 +46,7 @@ Claude pousse sur GitHub, importe le repo dans Vercel via leur UI, te demande de
 
 | Surface | Activer = | Désactiver = |
 |---|---|---|
-| Paiements (Bictorys) | Remplir `BICTORYS_*` | `/api/orders` 404 |
+| Paiements (Moneroo) | Remplir `MONEROO_*` | `/api/orders` 404 |
 | OAuth Google | Remplir `GOOGLE_*` | `/api/auth/oauth/google/*` 404 |
 | Uploads (Cloudinary) | Remplir `CLOUDINARY_*` | `/api/upload` 503 |
 | Email Resend | Remplir `RESEND_API_KEY` | jobs s'accumulent dans la queue |

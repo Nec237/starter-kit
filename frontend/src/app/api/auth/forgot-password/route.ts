@@ -11,7 +11,7 @@
 // latency floor. The bcrypt compare is the dominant cost on BOTH branches —
 // the user-exists branch's $transaction (verificationCode.create + outbox
 // enqueue, ~20-80ms) is dwarfed by it. The wall-clock floor smooths out any
-// residual jitter (Neon cold-start, outbox latency spikes) so a network
+// residual jitter (database latency, outbox latency spikes) so a network
 // observer cannot distinguish branches by response time.
 //
 // CSRF carve-out: pre-session route.
@@ -34,7 +34,7 @@ const VERIFICATION_TTL_MS = Number(process.env.AUTH_VERIFICATION_TTL_MIN ?? 15) 
 // CR-01 — wall-clock floor for both branches. 350ms covers a cost-12 bcrypt
 // compare worst-case + a single $transaction roundtrip + jitter, so the
 // no-user branch never finishes faster than the user-exists branch even on
-// fast Neon-pooler responses. Override via env if observed P99 differs.
+// fast database responses. Override via env if observed P99 differs.
 const TARGET_LATENCY_MS = Number(process.env.AUTH_FORGOT_TARGET_LATENCY_MS ?? 350);
 
 const Body = z.object({ email: zEmail });
@@ -110,7 +110,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     }
 
     // CR-01 — wall-clock floor: pad to TARGET_LATENCY_MS so residual jitter
-    // (Neon cold-start, outbox latency spikes) cannot reveal the branch.
+    // (database latency, outbox latency spikes) cannot reveal the branch.
     const elapsed = Date.now() - startedAt;
     if (elapsed < TARGET_LATENCY_MS) {
       await new Promise((r) => setTimeout(r, TARGET_LATENCY_MS - elapsed));

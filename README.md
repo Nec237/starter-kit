@@ -1,6 +1,8 @@
-# izi kit
+# Starter Kit
 
-Starter full-stack headless pour la stack Next.js 16 + Prisma 5 + Neon + Upstash + Cloudinary + Resend + Bictorys + Sentry. Une seule app Next.js déployable — aucun backend séparé. Les providers tiers (Cloudinary, Resend, Bictorys, Google OAuth, Sentry, Upstash) sont gated par variables d'environnement et inertes sans leurs clés ; l'app boote et `/api/auth` fonctionne avec juste `DATABASE_URL`, `JWT_SECRET`, `ENCRYPTION_KEY` et `CRON_SECRET`. Le starter ne ship que de la logique — aucun composant UI, aucune page — chaque fork designe son propre UX.
+Template full-stack headless pour la stack Next.js 16 + Prisma 5 + PostgreSQL (**Neon** ou **self-hosted Supabase**) + Upstash + Cloudinary + Resend + Moneroo + Sentry. Une seule app Next.js déployable — aucun backend séparé. Les providers tiers (Cloudinary, Resend, Moneroo/Stripe, Google OAuth, Sentry, Upstash) sont gated par variables d'environnement et inertes sans leurs clés ; l'app boote et `/api/auth` fonctionne avec juste `DATABASE_URL`, `JWT_SECRET`, `ENCRYPTION_KEY` et `CRON_SECRET`. Le starter ne ship que de la logique — aucun composant UI, aucune page — chaque fork designe son propre UX.
+
+**Template GitHub** : clique « Use this template » (ou `gh repo create --template`) pour démarrer un nouveau projet depuis ce noyau, sans jamais refaire l'installation. La skill `/setup-kit` s'occupe de tout : skills, mémoire agent, base de données, secrets, puis planification de ton projet.
 
 Voir [STATUS.md](STATUS.md) pour l'historique de migration.
 
@@ -12,7 +14,7 @@ Voir [STATUS.md](STATUS.md) pour l'historique de migration.
 /setup-kit
 ```
 
-`/setup-kit` est une skill bundlée dans ce repo. Elle te guide de bout en bout : audit de ton environnement (Git, Node, pnpm, gh CLI), détection des cas piégeux (ZIP-download → blocker explicite, env file au mauvais endroit), installation des 2 plugins Claude Code manquants (superpowers + context-mode — via la palette UI de l'extension ou en fallback paste-ready CLI), création du compte Neon Postgres gratuit (la **seule** dépendance obligatoire), génération des secrets, `pnpm install`, migrations Prisma. Compte ~5-10 min, principalement à attendre les installs.
+`/setup-kit` est une skill bundlée dans ce repo. Elle audite l'environnement, **installe automatiquement les skills** (superpowers + context-mode pour la mémoire de l'agent), configure ta **base de données au choix — Neon (débutant) ou self-hosted Supabase via Docker (expérimenté)**, génère les secrets applicatifs, applique les migrations Prisma, puis **te cuisine sur ton projet** (questions + plan détaillé) avant l'implémentation.
 
 Une fois `/setup-kit` terminé : **décris à Claude ce que tu veux construire**. Les 40 routes API (auth, paiements, admin, webhooks, cron, uploads) sont déjà câblées — tu n'as qu'à parler de ton produit, pas du plumbing. Si tu as un design Banani, dis « reproduis ces écrans-là » ; sinon, Claude propose une UI à partir de ta description.
 
@@ -22,27 +24,29 @@ Pré-requis avant de taper `/setup-kit` : avoir **Claude Code** installé (CLI o
 
 ## Quickstart
 
-Le starter est **cloud-only par design** — aucun conteneur local, aucun daemon à installer. **[Neon](https://neon.tech) est le provider Postgres par défaut** : le kit est **tuned pour son comportement serverless** (le handler de webhooks évite le plafond de tx 2s en sortant les side-effects vers l'outbox, la mitigation timing-attack de `/forgot-password` calibre son floor à 350ms sur la base de la latence Neon-pooler, et un tripwire CI verrouille `.env.example` au format Neon). D'autres Postgres (Supabase, Railway, Render, RDS, self-hosted) fonctionnent — le SQL est standard — mais demandent du tuning user-side ; reste sur Neon sauf raison forte (équipe déjà sur Supabase, data residency…).
+Deux chemins de base de données, tu choisis (setup-kit te guide jusqu'au bout) : **Neon** (cloud, zéro install, recommandé débutant) ou **self-hosted Supabase** (stack Docker : PostgreSQL, Supavisor, Auth, PostgREST, Storage, Realtime, Studio ; recommandé développeur expérimenté). Prisma se connecte au pool (`DATABASE_URL`) et utilise l'URL directe (`DIRECT_URL`) pour les migrations.
 
 ```bash
-gh repo clone faratasn-pixel/izikit my-project   # ou: git clone <fork-url> my-project
+# Nouveau projet : clique « Use this template » sur GitHub, puis clone ton repo
+gh repo clone <ton-compte>/<ton-projet> my-project   # ou: git clone <fork-url> my-project
 cd my-project
 cp .env.example frontend/.env.local              # remplis DATABASE_URL, JWT_SECRET, ENCRYPTION_KEY, CRON_SECRET au minimum
 pnpm install
-pnpm db:migrate:deploy                           # applique les migrations versionnées sur ta DB Neon
+pnpm db:migrate:deploy                           # applique les migrations versionnées sur ta DB (Neon ou self-hosted Supabase)
 pnpm dev                                         # http://localhost:3000
 # dans un autre terminal, après le premier signup :
 pnpm db:make-superadmin you@example.com
 pnpm smoke:auth                                  # vérifie le happy path auth de bout en bout
 ```
 
-Pour obtenir `DATABASE_URL` + `DIRECT_URL` : crée un projet gratuit sur https://neon.tech, puis copie deux strings depuis le dashboard — la version avec **`-pooler`** dans le hostname comme `DATABASE_URL` (avec `?pgbouncer=true&connection_limit=1&pool_timeout=15&sslmode=require`) et la version sans `-pooler` comme `DIRECT_URL`. Exemples dans `.env.example`.
+Les valeurs `DATABASE_URL`, `DIRECT_URL`, `SUPABASE_URL`, clés anon et service-role sont générées par la stack locale. Les formes attendues sont documentées dans `.env.example`; les valeurs réelles restent uniquement dans les environnements ignorés par Git et dans Dokploy.
 
 ## Stack
 
 - **App :** Next.js 16 (App Router) + React 19 + TypeScript — full-stack via `app/api/<resource>/route.ts` + Server Actions ; tout dans une seule app
-- **Base de données :** Prisma 5 (Postgres / Neon serverless via URL `-pooler` + `DIRECT_URL` pour les migrations)
-- **Infra (toutes optionnelles, env-gated) :** Upstash Redis (rate-limit + leader election + outbox), Cloudinary (média / uploads), Resend (email), Bictorys (paiements mobile money), Google OAuth via `arctic`
+- **Base de données :** Prisma 5 sur PostgreSQL — **Neon** (pooler serverless) ou **self-hosted Supabase** (Supavisor) ; `DIRECT_URL` pour les migrations
+- **Infra (toutes optionnelles, env-gated) :** Upstash Redis (rate-limit + leader election + outbox), Cloudinary (média / uploads), Resend (email), **Moneroo (paiements mobile money — principal) / Stripe (alternative, `PAYMENT_PROVIDER=stripe`)**, Google OAuth via `arctic`
+- **Mémoire agent (cross-LLM) :** MCP `context-mode` — mémoire persistante du projet compatible Claude Code / Codex / OpenCode / Cursor, pour qu'aucun contexte ne soit oublié entre sessions
 - **Auth :** cookie + CSRF + JWT (access 15min / refresh 7j / csrf 7j)
 - **Observabilité :** Sentry via `@sentry/nextjs` (`instrumentation.ts` + `sentry.{client,server,edge}.config.ts`) — no-op silencieux sans `SENTRY_DSN` ; `@vercel/otel` pour les traces distribuées
 - **Outils :** workspace pnpm (un seul package dans `frontend/`), Vitest, ESLint 9 flat config, Prettier, Node 20+
@@ -51,8 +55,8 @@ Pour obtenir `DATABASE_URL` + `DIRECT_URL` : crée un projet gratuit sur https:/
 
 | Variable | Rôle |
 |---|---|
-| `DATABASE_URL` | URL pooler Neon (`?pgbouncer=true&connection_limit=1&pool_timeout=15&sslmode=require`) |
-| `DIRECT_URL` | URL Neon directe (non-poolée) pour `prisma migrate` |
+| `DATABASE_URL` | URL du pool Postgres — Neon (`-pooler`) ou Supavisor (self-hosted Supabase) |
+| `DIRECT_URL` | URL directe (sans pooler) pour `prisma migrate` — Neon ou service DB Supabase |
 | `JWT_SECRET` | ≥32 chars, générer avec `openssl rand -base64 32` |
 | `ENCRYPTION_KEY` | 32 bytes base64, générer avec `openssl rand -base64 32` |
 | `CRON_SECRET` | Bearer token requis par les handlers `/api/cron/*` ; `openssl rand -base64 32` |
@@ -64,12 +68,13 @@ Groupes optionnels (set les vars pour activer ; absent = inerte) :
 |---|---|---|
 | Storage (Cloudinary) | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `CLOUDINARY_UPLOAD_PRESET?` | `/api/upload` renvoie 503 ; les URLs retournées sont des `secure_url` Cloudinary servies directement par leur CDN. **⚠️ Ces URLs sont publiques — quiconque a l'URL peut lire le fichier. OK pour avatars / posts publics ; pour KYC / factures, ajoute Cloudinary signed delivery ou un proxy auth.** |
 | Email (Resend) | `RESEND_API_KEY`, `EMAIL_FROM` | Les lignes en queue email s'accumulent mais ne partent jamais (drainage au cron suivant dès que la clé arrive) |
-| Paiements (Bictorys) | `BICTORYS_API_KEY`, `BICTORYS_PRIVATE_KEY`, `BICTORYS_WEBHOOK_SECRET`, `BICTORYS_MERCHANT_SECRET_CODE` | `/api/orders` et `/api/webhooks/bictorys` renvoient 404 ; circuit breaker reste CLOSED |
+| Paiements — **Moneroo (principal)** | `MONEROO_SECRET_KEY`, `MONEROO_WEBHOOK_SECRET`, `MONEROO_API_URL?` | `/api/orders` renvoie 503 si le provider est absent |
+| Paiements — **Stripe (alternative)** | `PAYMENT_PROVIDER=stripe`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Provider pluggable derrière l'interface `PaymentProvider` ; défaut = Moneroo |
 | Google OAuth | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` | `/api/auth/oauth/google/*` renvoient 404 |
 | Sentry | `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_TRACES_SAMPLE_RATE?`, ... | No-op silencieux (zéro coût perf) |
 | Upstash Redis | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Fallback rate-limit en mémoire avec `logger.warn` au boot — NE PAS lancer en prod sans Upstash |
 
-Référence env complète avec toutes les flags : voir [`.env.example`](.env.example) à la racine du repo (14 sections, chaque clé documentée avec défaut + impact).
+Référence env complète avec toutes les flags : voir [`.env.example`](.env.example) à la racine du repo (chaque clé documentée avec défaut + impact ; DB Neon/Supabase, Moneroo/Stripe, Cloudflare, Google OAuth).
 
 ## Inventaire des routes
 
@@ -119,7 +124,7 @@ Les fichiers uploadés renvoient un `secure_url` Cloudinary servi directement pa
 ### Webhooks — 1 route
 | Méthode | Path | Auth |
 |---|---|---|
-| POST | `/api/webhooks/bictorys` | HMAC provider + replay window 60s |
+| POST | `/api/webhooks/moneroo` | HMAC provider + replay window 60s |
 
 ### Handlers cron — 5 routes (toutes `Authorization: Bearer ${CRON_SECRET}`)
 | Path | Schedule (`vercel.json`) |
@@ -193,17 +198,17 @@ Les forks ouverts dans Claude Code récupèrent automatiquement plusieurs skills
 
 | Skill | Phrases déclencheuses | Ce qu'elle fait |
 |---|---|---|
-| [`setup-kit`](.claude/skills/setup-kit/SKILL.md) | « /setup-kit », « je débute », « qu'est-ce que je dois installer » | Audit Git / Node / pnpm / gh CLI / env vars / Claude Code surface, blocker explicite si l'user a téléchargé le ZIP au lieu de cloner, install paste-ready (UI palette ou CLI) des 2 plugins manquants, Neon en provider Postgres par défaut (alternatives Supabase/Railway/Render documentées mais surfacées seulement à la demande). Mode débutant non-négociable. |
+| [`setup-kit`](.claude/skills/setup-kit/SKILL.md) | « /setup-kit », « je débute », « qu'est-ce que je dois installer » | Audit Git / Node / pnpm / gh CLI / env vars / Claude Code surface, blocker explicite si l'user a téléchargé le ZIP au lieu de cloner, **auto-install des skills** (superpowers + context-mode via `claude plugin`), **choix DB Neon (débutant) ou self-hosted Supabase Docker + guide Cloudflare (expérimenté)**, secrets, migrations, puis **phase finale brainstorming/plan** du projet. Mode débutant non-négociable. |
 | [`banani-design-implementation`](.claude/skills/banani-design-implementation/SKILL.md) | « build this from Banani », « use the Banani MCP », « reproduce this screen » | Reproduction pixel-perfect 1:1 des écrans Banani sélectionnés via MCP (optionnel — Banani n'est pas requis). Lit `CLAUDE.md` pour la stack, planifie, tracke entre sessions. |
 | [`ui-ux-pro-max`](.claude/skills/ui-ux-pro-max/SKILL.md) | « design », « build », « improve », « review UI » + button/modal/navbar/dashboard/landing/SaaS/glassmorphism/etc. | Design intelligence searchable : 67 styles, 96 palettes, 57 paires de fonts, 99 guidelines UX, 25 types de charts sur 13 stacks (Next.js, React, Vue, SwiftUI, Flutter…). Intégration MCP shadcn/ui. |
-| [`izisaas-payments-handler`](.claude/skills/izisaas-payments-handler/SKILL.md) | « intégrer Stripe », « ajouter Moneroo », « swap Bictorys pour … », « webhook signature failure » | Reference complète pour 4 providers de paiement (Stripe worldwide cards + subscriptions, Moneroo / Bictorys / PayTech mobile money UEMOA). Couvre signature verification, idempotent fulfillment, lifecycle subscriptions, stockage credentials AES-256-GCM, gotchas spécifiques par provider. Surface seulement si le fork swap ou étend le default Bictorys. |
+| [`izisaas-payments-handler`](.claude/skills/izisaas-payments-handler/SKILL.md) | « intégrer Stripe », « ajouter Moneroo », « swap Moneroo pour … », « webhook signature failure » | Reference complète pour 4 providers de paiement (Stripe worldwide cards + subscriptions, Moneroo / Moneroo / PayTech mobile money UEMOA). Couvre signature verification, idempotent fulfillment, lifecycle subscriptions, stockage credentials AES-256-GCM, gotchas spécifiques par provider. Surface seulement si le fork swap ou étend le default Moneroo. |
 
 Les débutants peuvent donc passer de `gh repo clone` à un UI designé en un seul chat : décris l'écran → une skill prend le relais → les routes API sont déjà câblées.
 
 ## Structure du projet
 
 ```
-izikit/
+starter-kit/
 ├── frontend/                    L'app Next.js 16 (full-stack)
 │   ├── prisma/                  schema.prisma + migrations
 │   ├── scripts/                 make-superadmin.ts, seed-dev.ts, smoke-auth.ts (via tsx)
@@ -227,11 +232,11 @@ Décisions de scope du starter — copié ici pour rendre ce README self-contain
 | Feature | Raison |
 |---|---|
 | Composants UI / pages | Headless par design — chaque fork construit son propre UX |
-| Multi-provider paiements out-of-the-box | L'interface `PaymentProvider` permet le swap par projet ; défaut Bictorys only |
+| Multi-provider paiements out-of-the-box | L'interface `PaymentProvider` permet le swap par projet ; défaut Moneroo only |
 | Worker process long-running | Décision Vercel-first — tout le background tourne en route handlers planifiés |
 | Migration Auth.js / NextAuth | JWT custom + cookies + CSRF gardés pour la parité template complète |
 | Runtime Edge / Cloudflare Workers | Toutes les routes sont `runtime='nodejs'` |
-| Distribution OSS publique (docs site, package npm, CLI bootstrapper) | Usage privé / personnel |
+| Site de docs / package npm / CLI bootstrapper | Distribution via template GitHub (« Use this template ») — pas de packaging npm |
 | Framework de test frontend (Playwright / RTL) | Vitest couvre `lib/server/**` only ; les tests UI sont per-projet |
 | Circuit breaker distribué en v1 | Limite single-instance ; reporté à v2 |
 | i18n au-delà des défauts FCFA | Concern per-projet |
@@ -253,4 +258,4 @@ Ce sont les règles que chaque session Claude doit respecter — voir [CLAUDE.md
 
 ## Licence
 
-UNLICENSED — template interne.
+MIT — template réutilisable. Forke via « Use this template », build ton produit, garde ou remplace cette licence dans ton fork.

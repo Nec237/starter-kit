@@ -1,12 +1,13 @@
-// Default welcome page for the izi kit starter.
+// Page d'accueil par défaut du starter « Starter Kit ».
 //
-// Replace this file with your real homepage as soon as you're oriented.
-// This file exists so a fresh fork shows something useful at `/` instead of a
-// blank page — it's a server component that reads env at request time and
-// shows which optional providers are configured.
+// Remplace ce fichier par ta vraie page d'accueil dès que tu es orienté.
+// Il existe pour qu'un fork fraîchement cloné affiche quelque chose d'utile à
+// `/` plutôt qu'une page blanche — c'est un server component qui lit l'env au
+// moment de la requête et montre quels providers optionnels sont configurés.
 //
-// Design-swappable: uses minimal Tailwind utilities; rip the JSX out and write
-// your own homepage. The starter ships no UI components by design.
+// Design-swappable : n'utilise que des utilitaires Tailwind minimaux ; arrache
+// le JSX et écris ta propre page d'accueil. Le starter ne ship aucun composant
+// UI, par choix.
 
 export const runtime = 'nodejs';
 
@@ -26,76 +27,83 @@ export default function Home() {
   const env = process.env;
 
   const required = [
-    { label: 'DATABASE_URL', ok: !!env.DATABASE_URL, hint: 'Postgres (required)' },
-    { label: 'JWT_SECRET', ok: !!env.JWT_SECRET, hint: 'Auth signing key (required)' },
+    {
+      label: 'DATABASE_URL',
+      ok: !!env.DATABASE_URL,
+      hint: 'Postgres — Neon ou self-host Supabase',
+    },
+    { label: 'JWT_SECRET', ok: !!env.JWT_SECRET, hint: 'Clé de signature auth (requise)' },
   ];
 
   const recommended = [
-    { label: 'ENCRYPTION_KEY', ok: !!env.ENCRYPTION_KEY, hint: 'AES-256-GCM (recommended)' },
-    { label: 'CRON_SECRET', ok: !!env.CRON_SECRET, hint: 'Vercel Cron Bearer (recommended)' },
-    { label: 'DIRECT_URL', ok: !!env.DIRECT_URL, hint: 'For prisma migrate deploy' },
+    { label: 'ENCRYPTION_KEY', ok: !!env.ENCRYPTION_KEY, hint: 'AES-256-GCM (recommandé)' },
+    { label: 'CRON_SECRET', ok: !!env.CRON_SECRET, hint: 'Bearer des routes cron (recommandé)' },
+    { label: 'DIRECT_URL', ok: !!env.DIRECT_URL, hint: 'Pour prisma migrate deploy' },
   ];
 
   const optional = [
     {
       label: 'UPSTASH_REDIS_REST_URL',
       ok: !!env.UPSTASH_REDIS_REST_URL,
-      hint: 'Redis (rate limit, queue, lockout)',
+      hint: 'Redis (rate-limit, file d’attente, verrous)',
     },
     {
       label: 'GOOGLE_CLIENT_ID',
       ok: !!env.GOOGLE_CLIENT_ID,
-      hint: 'Sign in with Google (OAuth)',
+      hint: 'Connexion avec Google (OAuth)',
     },
-    { label: 'RESEND_API_KEY', ok: !!env.RESEND_API_KEY, hint: 'Email sender' },
-    { label: 'EMAIL_FROM', ok: !!env.EMAIL_FROM, hint: 'Verified sender address' },
+    { label: 'RESEND_API_KEY', ok: !!env.RESEND_API_KEY, hint: 'Envoi d’emails' },
+    { label: 'EMAIL_FROM', ok: !!env.EMAIL_FROM, hint: 'Adresse expéditrice vérifiée' },
     {
       label: 'CLOUDINARY_CLOUD_NAME',
       ok: !!env.CLOUDINARY_CLOUD_NAME,
-      hint: 'Cloudinary file / media storage',
+      hint: 'Stockage média / uploads (Cloudinary)',
     },
-    { label: 'BICTORYS_API_KEY', ok: !!env.BICTORYS_API_KEY, hint: 'Mobile money payments' },
-    { label: 'SENTRY_DSN', ok: !!env.SENTRY_DSN, hint: 'Error reporting + traces' },
+    { label: 'MONEROO_SECRET_KEY', ok: !!env.MONEROO_SECRET_KEY, hint: 'Paiements — principal' },
+    { label: 'STRIPE_SECRET_KEY', ok: !!env.STRIPE_SECRET_KEY, hint: 'Paiements — alternative' },
+    { label: 'SUPABASE_URL', ok: !!env.SUPABASE_URL, hint: 'API self-host Supabase' },
+    { label: 'SENTRY_DSN', ok: !!env.SENTRY_DSN, hint: 'Observabilité (erreurs + traces)' },
   ];
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-12 font-sans text-gray-900">
       <header>
-        <h1 className="text-3xl font-bold tracking-tight">izi kit</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Starter Kit</h1>
         <p className="mt-2 text-gray-600">
-          Headless Next.js 16 starter — auth, payments, admin, webhooks, cron.
+          Starter headless Next.js 16 — auth, paiements, admin, webhooks, cron.
           <br />
-          You&rsquo;re seeing this default page because{' '}
+          Tu vois cette page par défaut parce que{' '}
           <code className="rounded bg-gray-100 px-1.5 py-0.5 text-sm">
             frontend/src/app/page.tsx
           </code>{' '}
-          hasn&rsquo;t been replaced yet.
+          n&rsquo;a pas encore été remplacé.
         </p>
       </header>
 
-      {/* ─── Beginner: what to type next ───────────────────────────────── */}
+      {/* ─── Débutant : quoi taper ensuite ─────────────────────────────── */}
       <section className="mt-10 rounded-lg border border-emerald-200 bg-emerald-50 p-5">
         <h2 className="text-lg font-semibold text-emerald-900">
-          👋 New here? Open this project in Claude Code and type:
+          👋 Nouveau ici ? Ouvre ce projet dans Claude Code et tape :
         </h2>
         <pre className="mt-3 overflow-x-auto rounded bg-white p-3 text-sm">/setup-kit</pre>
         <p className="mt-3 text-sm text-emerald-900">
-          The <code>/setup-kit</code> skill audits your environment, installs what it can (pnpm via
-          Corepack, secrets), and walks you through plugging a <strong>Neon Postgres</strong>{' '}
-          connection string — the kit is tuned for Neon&rsquo;s serverless behavior (other Postgres
-          providers work but need user-side tuning). Then just{' '}
-          <strong>describe what you want to build to Claude</strong> (in French or English). The 40
-          routes (auth, payments, admin, webhooks, cron, uploads) are already wired — you only talk
-          about your product, not the plumbing. See <code>WORKFLOW.md</code> for the full
-          vibe-coding flow.
+          La skill <code>/setup-kit</code> audite ton environnement, installe les skills{' '}
+          <strong>superpowers</strong> et <strong>context-mode</strong> (la mémoire de l&rsquo;agent
+          tout au long du projet), configure ta base de données — <strong>au choix : Neon</strong>{' '}
+          (recommandé débutant, cloud, zéro install) ou <strong>self-host Supabase</strong>{' '}
+          (recommandé développeur expérimenté) — génère les secrets et applique les migrations.
+          Ensuite elle <strong>te cuisine sur ton projet</strong> (questions, plan détaillé) avant
+          de passer à l&rsquo;implémentation. Les 40 routes API (auth, paiements, admin, webhooks,
+          cron, uploads) sont déjà câblées — tu ne parles que de ton produit, pas de la plomberie.
+          Voir <code>WORKFLOW.md</code> pour le flow complet.
         </p>
       </section>
 
-      {/* ─── Live backend probes ──────────────────────────────────────── */}
+      {/* ─── Sondes backend en direct ─────────────────────────────────── */}
       <section className="mt-10">
-        <h2 className="text-xl font-semibold">Backend status</h2>
+        <h2 className="text-xl font-semibold">Statut backend</h2>
         <p className="mt-1 text-sm text-gray-600">
-          Live JSON probes — open these in a new tab to confirm everything is up.
+          Sondes JSON en direct — ouvre-les dans un nouvel onglet pour confirmer que tout tourne.
         </p>
         <ul className="mt-3 space-y-1">
           <li>
@@ -107,7 +115,7 @@ export default function Home() {
             >
               /api/health
             </a>{' '}
-            <span className="text-xs text-gray-500">— liveness (always responds)</span>
+            <span className="text-xs text-gray-500">— liveness (répond toujours)</span>
           </li>
           <li>
             <a
@@ -119,22 +127,23 @@ export default function Home() {
               /api/readyz
             </a>{' '}
             <span className="text-xs text-gray-500">
-              — readiness (DB + Redis probes, 503 if either is down)
+              — readiness (sondes DB + Redis, 503 si l&rsquo;un est à terre)
             </span>
           </li>
         </ul>
       </section>
 
-      {/* ─── Provider configuration ───────────────────────────────────── */}
+      {/* ─── Configuration des providers ──────────────────────────────── */}
       <section className="mt-10">
-        <h2 className="text-xl font-semibold">Provider configuration</h2>
+        <h2 className="text-xl font-semibold">Configuration des providers</h2>
         <p className="mt-1 text-sm text-gray-600">
-          Read at request time from <code>process.env</code>. Optional providers are inert when
-          absent — the corresponding routes 404 silently and the rest of the app keeps working.
+          Lue au moment de la requête depuis <code>process.env</code>. Les providers optionnels sont
+          inertes quand absents — les routes correspondantes renvoient 404 en silence et le reste de
+          l&rsquo;app continue de fonctionner.
         </p>
 
         <h3 className="mt-5 text-sm font-semibold uppercase tracking-wide text-gray-500">
-          Required (app refuses to boot without these)
+          Requis (l&rsquo;app refuse de booter sans)
         </h3>
         <ul>
           {required.map((row) => (
@@ -143,7 +152,7 @@ export default function Home() {
         </ul>
 
         <h3 className="mt-5 text-sm font-semibold uppercase tracking-wide text-gray-500">
-          Recommended (app boots, but breaks at first use)
+          Recommandés (l&rsquo;app boote, mais casse à la première utilisation)
         </h3>
         <ul>
           {recommended.map((row) => (
@@ -152,7 +161,7 @@ export default function Home() {
         </ul>
 
         <h3 className="mt-5 text-sm font-semibold uppercase tracking-wide text-gray-500">
-          Optional providers
+          Providers optionnels
         </h3>
         <ul>
           {optional.map((row) => (
@@ -161,32 +170,34 @@ export default function Home() {
         </ul>
       </section>
 
-      {/* ─── What's shipped ───────────────────────────────────────────── */}
+      {/* ─── Ce que le starter embarque ───────────────────────────────── */}
       <section className="mt-10">
-        <h2 className="text-xl font-semibold">What this starter ships</h2>
+        <h2 className="text-xl font-semibold">Ce que ce starter embarque</h2>
         <ul className="mt-3 list-inside list-disc space-y-1 text-sm">
           <li>
-            API routes under <code>/api/*</code> — auth, OAuth, admin, payments, uploads, webhooks,
-            5 cron handlers
+            Routes API sous <code>/api/*</code> — auth, OAuth, admin, paiements, uploads, webhooks,
+            5 handlers cron
           </li>
-          <li>Prisma schema + versioned migrations (Postgres / Neon)</li>
-          <li>Vitest unit test suite covering the protected libs</li>
-          <li>CI pipeline: format / lint / typecheck / test / build / audit</li>
+          <li>Schéma Prisma + migrations versionnées (Neon ou self-host Supabase Postgres)</li>
+          <li>Suite de tests unitaires Vitest couvrant les libs protégées</li>
+          <li>Pipeline CI : format / lint / typecheck / test / build / audit</li>
           <li>
-            Cloud-only by design — bring your own Postgres (Neon free tier), no local containers
+            Mémoire de l&rsquo;agent cross-LLM via le MCP <code>context-mode</code> — compatible
+            Claude Code / Codex / OpenCode
           </li>
+          <li>Skills superpowers auto-installées (brainstorming, plans, TDD, debugging)</li>
         </ul>
         <p className="mt-3 text-sm text-gray-600">
-          Full architecture overview in{' '}
-          <code className="rounded bg-gray-100 px-1.5 py-0.5">CLAUDE.md</code>; public surface in{' '}
-          <code className="rounded bg-gray-100 px-1.5 py-0.5">README.md</code>.
+          Vue d&rsquo;ensemble de l&rsquo;architecture dans{' '}
+          <code className="rounded bg-gray-100 px-1.5 py-0.5">CLAUDE.md</code> ; surface publique
+          dans <code className="rounded bg-gray-100 px-1.5 py-0.5">README.md</code>.
         </p>
       </section>
 
       <footer className="mt-12 border-t border-gray-200 pt-6 text-xs text-gray-500">
-        Replace this page in{' '}
-        <code className="rounded bg-gray-100 px-1.5 py-0.5">frontend/src/app/page.tsx</code> when
-        you&rsquo;re ready.
+        Remplace cette page dans{' '}
+        <code className="rounded bg-gray-100 px-1.5 py-0.5">frontend/src/app/page.tsx</code> quand
+        tu es prêt.
       </footer>
     </main>
   );

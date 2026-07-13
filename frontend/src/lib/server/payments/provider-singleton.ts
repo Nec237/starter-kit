@@ -1,96 +1,106 @@
-// Lazy-initialized Bictorys provider + module-level CircuitBreaker (D-PAY-02 + Pitfall 7).
-//
-// Why lazy?
-//   `createBictorysProvider({...})` throws synchronously if any of
-//   BICTORYS_API_URL / BICTORYS_API_KEY / BICTORYS_WEBHOOK_SECRET is missing
-//   (see bictorys.ts:165-171). Calling it at module top-level inside a route
-//   would crash the route-module on import — every POST /api/orders would
-//   then return 500 with no useful error.
-//
-//   This module instead exposes `getProvider()` which constructs the provider
-//   on first call, caches it for subsequent calls, and throws a typed
-//   `PaymentProviderUnconfiguredError` if env is missing. The route catches
-//   that error and returns a clean 503 PAYMENT_PROVIDER_UNCONFIGURED.
-//
-// Why a single shared CircuitBreaker?
-//   The breaker holds in-memory failure-counter state. Re-instantiating it
-//   per request would defeat its purpose. Sharing it at module scope is by
-//   design — see CLAUDE.md "single-instance only" note for the in-memory
-//   breaker. For multi-pod deployments swap for a Redis-backed variant.
-//
-// CircuitBreakerOptions: the `cooldownMs` property name is verified against
-// circuit-breaker.ts:27 ("OPEN→HALF_OPEN cooldown in ms. Default 60 000.").
-// Earlier docs sometimes called this `openMs`; the actual exported option is
-// `cooldownMs`.
 import 'server-only';
-import {
-  createBictorysProvider,
-  type BictorysProviderHandle,
-} from '@/lib/server/payments/bictorys';
+import { createMonerooProvider, type MonerooProviderHandle } from '@/lib/server/payments/moneroo';
+import { createStripeProvider, type StripeProviderHandle } from '@/lib/server/payments/stripe';
 import { CircuitBreaker } from '@/lib/server/payments/circuit-breaker';
 
-/**
- * Thrown by `getProvider()` when BICTORYS_API_URL, BICTORYS_API_KEY, or
- * BICTORYS_WEBHOOK_SECRET is missing/empty. The orders route should catch
- * this `instanceof` and return 503 PAYMENT_PROVIDER_UNCONFIGURED.
- */
 export class PaymentProviderUnconfiguredError extends Error {
-  constructor() {
+  constructor(message?: string) {
     super(
-      'Payment provider not configured (BICTORYS_API_URL/_API_KEY/_WEBHOOK_SECRET missing or empty)',
+      message ??
+        'Payment provider not configured (MONEROO_SECRET_KEY / MONEROO_WEBHOOK_SECRET missing)',
     );
     this.name = 'PaymentProviderUnconfiguredError';
   }
 }
 
-let _provider: BictorysProviderHandle | null = null;
+/** Union of the charge-capable providers the kit ships. */
+export type ChargeProvider = MonerooProviderHandle | StripeProviderHandle;
 
-/**
- * Lazy-init singleton accessor. First call reads `process.env`, constructs
- * the Bictorys provider, and caches the handle. Subsequent calls reuse the
- * cached instance. Throws `PaymentProviderUnconfiguredError` if any required
- * env var is missing — the route translates that to 503.
- */
-export function getProvider(): BictorysProviderHandle {
-  if (_provider) return _provider;
+let monerooProvider: MonerooProviderHandle | null = null;
+let stripeProvider: StripeProviderHandle | null = null;
 
-  const url = process.env.BICTORYS_API_URL ?? '';
-  const key = process.env.BICTORYS_API_KEY ?? '';
-  const webhookSecret = process.env.BICTORYS_WEBHOOK_SECRET ?? '';
+function monerooConfigured(): boolean {
+  return !!(process.env.MONEROO_SECRET_KEY && process.env.MONEROO_WEBHOOK_SECRET);
+}
 
-  if (!url || !key || !webhookSecret) {
-    throw new PaymentProviderUnconfiguredError();
-  }
-
-  _provider = createBictorysProvider({
-    BICTORYS_API_URL: url,
-    BICTORYS_API_KEY: key,
-    BICTORYS_WEBHOOK_SECRET: webhookSecret,
-  });
-  return _provider;
+function stripeConfigured(): boolean {
+  return !!(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_WEBHOOK_SECRET);
 }
 
 /**
- * Module-level CircuitBreaker — single-instance only per CLAUDE.md.
- * D-PAY-02 hard-codes the thresholds:
- *   - failureThreshold = 5 failures within
- *   - windowMs = 30 000 (30s rolling window)
- *   - cooldownMs = 60 000 (open → half-open delay)
+ * Which provider handles charges. Moneroo is the default (principal); Stripe
+ * is the alternative. Selection order:
+ *   1. explicit PAYMENT_PROVIDER env ("moneroo" | "stripe")
+ *   2. otherwise Moneroo — UNLESS only Stripe is configured, in which case
+ *      Stripe takes over so a Stripe-only fork works with zero extra wiring.
  */
+export function selectedProviderKind(): 'moneroo' | 'stripe' {
+  const explicit = process.env.PAYMENT_PROVIDER;
+  if (explicit === 'stripe') return 'stripe';
+  if (explicit === 'moneroo') return 'moneroo';
+  if (stripeConfigured() && !monerooConfigured()) return 'stripe';
+  return 'moneroo';
+}
+
+/**
+ * Moneroo-specific handle (exposes `verifyPayment`). Used by the Moneroo
+ * verify + webhook routes. Throws when Moneroo isn't configured.
+ */
+export function getProvider(): MonerooProviderHandle {
+  if (monerooProvider) return monerooProvider;
+
+  const secretKey = process.env.MONEROO_SECRET_KEY ?? '';
+  const webhookSecret = process.env.MONEROO_WEBHOOK_SECRET ?? '';
+  if (!secretKey || !webhookSecret) {
+    throw new PaymentProviderUnconfiguredError();
+  }
+
+  monerooProvider = createMonerooProvider({
+    MONEROO_SECRET_KEY: secretKey,
+    MONEROO_WEBHOOK_SECRET: webhookSecret,
+    ...(process.env.MONEROO_API_URL ? { MONEROO_API_URL: process.env.MONEROO_API_URL } : {}),
+  });
+  return monerooProvider;
+}
+
+/** Stripe-specific handle. Throws when Stripe isn't configured. */
+export function getStripeProvider(): StripeProviderHandle {
+  if (stripeProvider) return stripeProvider;
+
+  const secretKey = process.env.STRIPE_SECRET_KEY ?? '';
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET ?? '';
+  if (!secretKey || !webhookSecret) {
+    throw new PaymentProviderUnconfiguredError(
+      'Stripe provider not configured (STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET missing)',
+    );
+  }
+
+  stripeProvider = createStripeProvider({
+    STRIPE_SECRET_KEY: secretKey,
+    STRIPE_WEBHOOK_SECRET: webhookSecret,
+    ...(process.env.STRIPE_API_URL ? { STRIPE_API_URL: process.env.STRIPE_API_URL } : {}),
+  });
+  return stripeProvider;
+}
+
+/**
+ * The active charge provider, honoring PAYMENT_PROVIDER / configured keys.
+ * Prefer this in provider-agnostic call sites (e.g. the orders route) — it
+ * returns whichever adapter is selected. Both adapters implement `charge`
+ * and expose a `webhookProvider`.
+ */
+export function getChargeProvider(): ChargeProvider {
+  return selectedProviderKind() === 'stripe' ? getStripeProvider() : getProvider();
+}
+
 export const breaker = new CircuitBreaker({
-  name: 'bictorys.charge',
+  name: 'moneroo.charge',
   failureThreshold: 5,
   windowMs: 30_000,
   cooldownMs: 60_000,
 });
 
-/**
- * Test-only escape hatch — clears the cached provider so a test can mutate
- * `process.env.BICTORYS_*` and re-trigger lazy init. Never call this from
- * application code.
- *
- * @internal
- */
 export function __resetProviderSingleton(): void {
-  _provider = null;
+  monerooProvider = null;
+  stripeProvider = null;
 }

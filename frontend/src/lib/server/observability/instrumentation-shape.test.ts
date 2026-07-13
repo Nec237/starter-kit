@@ -14,9 +14,9 @@ describe('instrumentation.ts shape (OPS-03, OBS-05)', () => {
     expect(src).toMatch(/import\s*\{\s*registerOTel\s*\}\s*from\s*['"]@vercel\/otel['"]/);
   });
 
-  it('calls registerOTel with serviceName "izikit"', () => {
+  it('calls registerOTel with serviceName "starter-kit"', () => {
     // OBS-05: minimal, exact shape per D-16.
-    expect(src).toMatch(/registerOTel\(\s*\{\s*serviceName:\s*['"]izikit['"]\s*\}\s*\)/);
+    expect(src).toMatch(/registerOTel\(\s*\{\s*serviceName:\s*['"]starter-kit['"]\s*\}\s*\)/);
   });
 
   it('re-exports onRequestError from @sentry/nextjs (named export)', () => {

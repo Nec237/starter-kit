@@ -12,7 +12,7 @@ const inter = Inter({
 
 // Replace these with your app name + description per fork.
 export const metadata: Metadata = {
-  title: 'izi kit',
+  title: 'Starter Kit',
   description: 'Headless Next.js 16 starter — auth, payments, admin, webhooks, cron.',
 };
 

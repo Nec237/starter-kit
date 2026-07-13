@@ -1,7 +1,7 @@
 /**
  * Idempotent webhook handler factory — Next.js port.
  *
- * Provider-agnostic. Each integration (Bictorys, Stripe, Paddle…)
+ * Provider-agnostic. Each integration (Moneroo, Stripe, Paddle…)
  * implements `WebhookProvider` with its own signature scheme + payload
  * parser. The handler then:
  *
@@ -63,6 +63,8 @@ export type WebhookEventHandler<TPayload> = (
 export interface WebhookHandlerOptions<TPayload> {
   prisma: PrismaClient;
   provider: WebhookProvider<TPayload>;
+  /** Optional provider-side verification performed before opening a DB transaction. */
+  verifyPayload?: (payload: TPayload, ids: ParsedIds) => Promise<void>;
   onPaid?: WebhookEventHandler<TPayload>;
   onRefunded?: WebhookEventHandler<TPayload>;
   onFailed?: WebhookEventHandler<TPayload>;
@@ -108,7 +110,19 @@ export function createWebhookHandler<TPayload>(
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
     }
 
-    const { externalId, eventType, kind } = opts.provider.extractIds(payload);
+    const ids = opts.provider.extractIds(payload);
+    const { externalId, eventType, kind } = ids;
+
+    if (opts.verifyPayload) {
+      try {
+        await opts.verifyPayload(payload, ids);
+      } catch (err) {
+        logger.error(`[webhook:${opts.provider.name}] provider verification failed`, {
+          err: String(err),
+        });
+        return NextResponse.json({ error: 'Webhook verification failed' }, { status: 502 });
+      }
+    }
 
     let deduped = false;
     let postCommit: (() => Promise<void>) | undefined;

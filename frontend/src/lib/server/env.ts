@@ -10,7 +10,7 @@ import { z } from 'zod';
 // same min(32) constraint here so the failure surfaces sooner (boot
 // instead of first auth call).
 //
-// OPTIONAL providers (Redis, Resend, Cloudinary, Bictorys, Sentry) are NOT
+// OPTIONAL providers (Supabase API, Redis, Resend, Cloudinary, Moneroo, Sentry) are NOT
 // validated here. They're load-bearing only when you call into them,
 // and validating them at boot would force every fork to populate every
 // optional integration before `pnpm dev` works. The relevant lib file
@@ -37,10 +37,40 @@ const envSchema = z.object({
   CRON_SECRET: z.string().min(16).optional(),
   ENCRYPTION_KEY: z.string().min(32).optional(),
 
+  // ── Self-hosted Supabase API ─────────────────────────────────────────
+  SUPABASE_URL: z.string().url().optional(),
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url().optional(),
+  SUPABASE_ANON_KEY: z.string().min(1).optional(),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1).optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
+
   // ── Cookie / origin ──────────────────────────────────────────────────
   COOKIE_PREFIX: z.string().min(1).default('app'),
   COOKIE_DOMAIN: z.string().optional(),
   ALLOWED_ORIGINS: z.string().optional(),
+  APP_URL: z.string().url().optional(),
+  PUBLIC_URL: z.string().url().optional(),
+
+  // ── Optional integrations ───────────────────────────────────────────
+  UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
+  RESEND_API_KEY: z.string().min(1).optional(),
+  EMAIL_FROM: z.string().min(1).optional(),
+  GOOGLE_CLIENT_ID: z.string().min(1).optional(),
+  GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
+  GOOGLE_REDIRECT_URI: z.string().url().optional(),
+  MONEROO_SECRET_KEY: z.string().min(1).optional(),
+  MONEROO_WEBHOOK_SECRET: z.string().min(1).optional(),
+  MONEROO_API_URL: z.string().url().optional(),
+  // Payment provider selection — Moneroo is the default (principal). Set to
+  // "stripe" to use the alternative Stripe adapter (see payments/stripe.ts).
+  PAYMENT_PROVIDER: z.enum(['moneroo', 'stripe']).optional(),
+  STRIPE_SECRET_KEY: z.string().min(1).optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
+  STRIPE_API_URL: z.string().url().optional(),
+  CLOUDFLARE_API_TOKEN: z.string().min(1).optional(),
+  CLOUDFLARE_ZONE_ID: z.string().min(1).optional(),
+  CLOUDFLARE_ACCOUNT_ID: z.string().min(1).optional(),
 
   // ── Tunables (numeric, with safe defaults) ───────────────────────────
   AUTH_LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
@@ -66,7 +96,10 @@ const envSchema = z.object({
 export type Env = z.infer<typeof envSchema>;
 
 function loadEnv(): Env {
-  const result = envSchema.safeParse(process.env);
+  const coerced = Object.fromEntries(
+    Object.entries(process.env).map(([k, v]) => [k, v === '' ? undefined : v]),
+  );
+  const result = envSchema.safeParse(coerced);
   if (!result.success) {
     const issues = result.error.issues
       .map((i) => `  - ${i.path.join('.') || '(root)'}: ${i.message}`)
